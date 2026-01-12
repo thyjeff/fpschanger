@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1 FPS Video Recorder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .fps-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .fps-selector label {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .fps-selector select {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .fps-selector select:hover {
+            border-color: #764ba2;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .fps-selector select:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #initBtn {
+            background: #667eea;
+            color: white;
+        }
+
+        #initBtn:hover {
+            background: #5568d3;
+        }
+
+        #initBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #startBtn {
+            background: #10b981;
+            color: white;
+        }
+
+        #startBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #startBtn:hover:not(:disabled) {
+            background: #059669;
+        }
+
+        #stopBtn {
+            background: #ef4444;
+            color: white;
+        }
+
+        #stopBtn:hover {
+            background: #dc2626;
+        }
+
+        #stopBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 700;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .recording {
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 1 FPS Video Recorder</h1>
+        
+        <div class="video-container">
+            <video id="videoElement" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="fps-selector">
+            <label for="fpsSelect">Frame Rate:</label>
+            <select id="fpsSelect">
+                <option value="0.1">0.1 FPS (1 frame/10s)</option>
+                <option value="0.5">0.5 FPS (1 frame/2s)</option>
+                <option value="1" selected>1 FPS</option>
+                <option value="2">2 FPS</option>
+                <option value="5">5 FPS</option>
+                <option value="10">10 FPS</option>
+                <option value="15">15 FPS</option>
+                <option value="24">24 FPS</option>
+                <option value="30">30 FPS</option>
+            </select>
+        </div>
+
+        <div class="controls">
+            <button id="initBtn">Initialize Camera</button>
+            <button id="startBtn" disabled>Start Recording</button>
+            <button id="stopBtn" disabled>Stop Recording</button>
+        </div>
+
+        <div class="info">
+            <div class="info-row">
+                <span class="info-label">Frames Captured:</span>
+                <span class="info-value" id="frameCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Recording Time:</span>
+                <span class="info-value" id="recordingTime">0s</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Current Frame Rate:</span>
+                <span class="info-value" id="currentFps">1 FPS</span>
+            </div>
+        </div>
+
+        <div class="status" id="status">Click "Initialize Camera" to begin</div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const frameCountEl = document.getElementById('frameCount');
+        const recordingTimeEl = document.getElementById('recordingTime');
+        const statusEl = document.getElementById('status');
+        const fpsSelect = document.getElementById('fpsSelect');
+        const currentFpsEl = document.getElementById('currentFps');
+        const initBtn = document.getElementById('initBtn');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+        let captureInterval;
+        let frameCount = 0;
+        let startTime;
+        let stream;
+        let currentFps = 1;
+
+        // Update FPS display when selection changes
+        fpsSelect.addEventListener('change', () => {
+            currentFps = parseFloat(fpsSelect.value);
+            currentFpsEl.textContent = currentFps + ' FPS';
+        });
+
+        // Initialize camera with simpler approach
+        async function initCamera() {
+            try {
+                initBtn.disabled = true;
+                initBtn.textContent = 'Initializing...';
+                statusEl.textContent = 'Requesting camera permission...';
+                statusEl.style.color = '#667eea';
+                
+                // Try with just video first (no audio requirement)
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: true 
+                    });
+                } catch (err) {
+                    // Fallback: try without audio
+                    console.log('Trying without audio...');
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
+                }
+                
+                videoElement.srcObject = stream;
+                
+                // Wait for video to actually start playing
+                await videoElement.play();
+                
+                // Small delay to ensure video is rendering
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                canvas.width = videoElement.videoWidth || 1280;
+                canvas.height = videoElement.videoHeight || 720;
+                
+                // Success!
+                statusEl.textContent = '✓ Camera ready! Select FPS and start recording';
+                statusEl.style.color = '#10b981';
+                startBtn.disabled = false;
+                initBtn.textContent = 'Reinitialize Camera';
+                initBtn.disabled = false;
+                
+            } catch (err) {
+                console.error('Camera error:', err);
+                statusEl.textContent = 'Error: ' + err.message + ' - Try clicking "Initialize Camera" again';
+                statusEl.style.color = '#ef4444';
+                initBtn.textContent = 'Try Again';
+                initBtn.disabled = false;
+                startBtn.disabled = true;
+            }
+        }
+
+        // Initialize camera button
+        initBtn.addEventListener('click', initCamera);
+
+        // Capture frame from video
+        function captureFrame() {
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            frameCount++;
+            frameCountEl.textContent = frameCount;
+        }
+
+        // Start recording
+        startBtn.addEventListener('click', async () => {
+            if (!stream) {
+                statusEl.textContent = 'Camera not initialized. Please refresh the page.';
+                statusEl.style.color = '#ef4444';
+                return;
+            }
+
+            recordedChunks = [];
+            frameCount = 0;
+            frameCountEl.textContent = '0';
+            startTime = Date.now();
+            currentFps = parseFloat(fpsSelect.value);
+
+            // Create a canvas stream at the selected FPS
+            const canvasStream = canvas.captureStream(currentFps);
+            
+            // Add audio track if available
+            if (stream && stream.getAudioTracks && stream.getAudioTracks().length > 0) {
+                canvasStream.addTrack(stream.getAudioTracks()[0]);
+            }
+
+            // Setup MediaRecorder with MP4 if supported
+            let options = { mimeType: 'video/mp4' };
+            
+            // Check for MP4 codec support
+            if (!MediaRecorder.isTypeSupported('video/mp4')) {
+                // Try MP4 with specific codec
+                if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264')) {
+                    options.mimeType = 'video/mp4;codecs=h264';
+                } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+                    options.mimeType = 'video/mp4;codecs=avc1';
+                } else {
+                    // Fallback to WebM
+                    options.mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+                        ? 'video/webm;codecs=vp9' 
+                        : 'video/webm';
+                }
+            }
+
+            mediaRecorder = new MediaRecorder(canvasStream, options);
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: options.mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Create filename with FPS and timestamp
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+                const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH-MM-SS
+                
+                // Use appropriate file extension
+                const extension = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
+                a.download = `recording-${currentFps}fps-${dateStr}_${timeStr}.${extension}`;
+                
+                a.click();
+                URL.revokeObjectURL(url);
+                statusEl.textContent = `Recording saved as ${extension.toUpperCase()}!`;
+                statusEl.classList.remove('recording');
+            };
+
+            mediaRecorder.start();
+
+            // Calculate interval in milliseconds (1000ms / fps)
+            const captureIntervalMs = 1000 / currentFps;
+
+            // Capture frames at the selected FPS
+            captureInterval = setInterval(() => {
+                captureFrame();
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                recordingTimeEl.textContent = elapsed + 's';
+            }, captureIntervalMs);
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            fpsSelect.disabled = true;
+            statusEl.textContent = '● Recording at ' + currentFps + ' FPS...';
+            statusEl.classList.add('recording');
+        });
+
+        // Stop recording
+        stopBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            clearInterval(captureInterval);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            fpsSelect.disabled = false;
+        });
+
+        // Initialize on load
+        // Removed auto-init - user must click button now
+    </script>
+</body>
+</html>
